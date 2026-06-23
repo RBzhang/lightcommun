@@ -1,0 +1,21 @@
+# Vivado project
+*.runs/
+*.cache/
+*.gen/
+*.sim/
+*.hw/
+*.ip_user_files/
+.Xil/
+
+# Logs and journals
+*.log
+*.jou
+*.str
+
+# Backup
+*.backup.*
+*.backup/
+
+# OS files
+Thumbs.db
+Desktop.ini
