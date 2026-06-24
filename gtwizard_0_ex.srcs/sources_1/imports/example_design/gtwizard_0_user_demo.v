@@ -77,6 +77,36 @@ module gtwizard_0_user_demo #
     assign gt0_link_ready = gt0_tx_ready & gt0_rx_ready;
     assign gt1_link_ready = gt1_tx_ready & gt1_rx_ready;
 
+    ila_rx0 u_ila_rx0 (
+        .clk(gt0_rx_clk),
+        .probe0(gt0_link_ready),
+        .probe1(gt0_rx_ready),
+        .probe2(gt0_rx_valid),
+        .probe3(gt0_rxdata),
+        .probe4(gt0_rxcharisk),
+        .probe5(gt0_rxdisperr),
+        .probe6(gt0_rxnotintable),
+        .probe7(gt0_rx_last_word),
+        .probe8(gt0_rx_word_count),
+        .probe9(gt0_rx_frame_count),
+        .probe10(gt0_rx_error_count)
+    );
+
+    ila_rx1 u_ila_rx1 (
+        .clk(gt1_rx_clk),
+        .probe0(gt1_link_ready),
+        .probe1(gt1_rx_ready),
+        .probe2(gt1_rx_valid),
+        .probe3(gt1_rxdata),
+        .probe4(gt1_rxcharisk),
+        .probe5(gt1_rxdisperr),
+        .probe6(gt1_rxnotintable),
+        .probe7(gt1_rx_last_word),
+        .probe8(gt1_rx_word_count),
+        .probe9(gt1_rx_frame_count),
+        .probe10(gt1_rx_error_count)
+    );
+
     gtwizard_0_user_exdes u_gt
     (
         .Q3_CLK0_GTREFCLK_PAD_N_IN(Q3_CLK0_GTREFCLK_PAD_N_IN),
