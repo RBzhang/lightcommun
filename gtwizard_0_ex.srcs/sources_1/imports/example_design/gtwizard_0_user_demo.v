@@ -323,24 +323,39 @@ module simple_8b10b_packet_rx
 
     reg in_frame = 1'b0;
 
+    wire byte0_ctrl_known = !rxcharisk[0] ||
+                            (rxdata[7:0]   == K_IDLE) ||
+                            (rxdata[7:0]   == K_SOF)  ||
+                            (rxdata[7:0]   == K_EOF);
+    wire byte1_ctrl_known = !rxcharisk[1] ||
+                            (rxdata[15:8]  == K_IDLE) ||
+                            (rxdata[15:8]  == K_SOF)  ||
+                            (rxdata[15:8]  == K_EOF);
+    wire byte2_ctrl_known = !rxcharisk[2] ||
+                            (rxdata[23:16] == K_IDLE) ||
+                            (rxdata[23:16] == K_SOF)  ||
+                            (rxdata[23:16] == K_EOF);
+    wire byte3_ctrl_known = !rxcharisk[3] ||
+                            (rxdata[31:24] == K_IDLE) ||
+                            (rxdata[31:24] == K_SOF)  ||
+                            (rxdata[31:24] == K_EOF);
+    wire known_control_word = byte0_ctrl_known & byte1_ctrl_known &
+                              byte2_ctrl_known & byte3_ctrl_known;
+
+    wire got_sof = (rxcharisk[0] && (rxdata[7:0]   == K_SOF)) ||
+                   (rxcharisk[1] && (rxdata[15:8]  == K_SOF)) ||
+                   (rxcharisk[2] && (rxdata[23:16] == K_SOF)) ||
+                   (rxcharisk[3] && (rxdata[31:24] == K_SOF));
+
+    wire got_eof = (rxcharisk[0] && (rxdata[7:0]   == K_EOF)) ||
+                   (rxcharisk[1] && (rxdata[15:8]  == K_EOF)) ||
+                   (rxcharisk[2] && (rxdata[23:16] == K_EOF)) ||
+                   (rxcharisk[3] && (rxdata[31:24] == K_EOF));
+
+    wire got_idle_only = (rxcharisk != 4'b0000) &&
+                         !got_sof && !got_eof && known_control_word;
+
     wire code_error = |rxdisperr | |rxnotintable;
-
-    wire byte0_sof = rxcharisk[0] && (rxdata[7:0]   == K_SOF);
-    wire byte1_sof = rxcharisk[1] && (rxdata[15:8]  == K_SOF);
-    wire byte2_sof = rxcharisk[2] && (rxdata[23:16] == K_SOF);
-    wire byte3_sof = rxcharisk[3] && (rxdata[31:24] == K_SOF);
-    wire got_sof   = byte0_sof | byte1_sof | byte2_sof | byte3_sof;
-
-    wire byte0_eof = rxcharisk[0] && (rxdata[7:0]   == K_EOF);
-    wire byte1_eof = rxcharisk[1] && (rxdata[15:8]  == K_EOF);
-    wire byte2_eof = rxcharisk[2] && (rxdata[23:16] == K_EOF);
-    wire byte3_eof = rxcharisk[3] && (rxdata[31:24] == K_EOF);
-    wire got_eof   = byte0_eof | byte1_eof | byte2_eof | byte3_eof;
-
-    wire got_idle = (rxcharisk == 4'b1111) &&
-                    (rxdata == {K_IDLE, K_IDLE, K_IDLE, K_IDLE});
-
-    wire got_known_control = got_idle | got_sof | got_eof;
 
     always @(posedge clk) begin
         if (rst || !ready) begin
@@ -350,8 +365,9 @@ module simple_8b10b_packet_rx
             frame_count <= 32'd0;
             error_count <= 32'd0;
         end else if (rx_valid) begin
-            // SOF/EOF are recognized on any byte lane.  This avoids false errors
-            // when GTX word alignment places the control character at byte1/2/3.
+            // SOF/EOF are recognized on any byte lane.  Idle/control padding is
+            // ignored on any byte lane as well, because byte-shifted loopback can
+            // produce words such as FBBCBCBC, FD00xx00, or BC000000.
             if (got_sof) begin
                 in_frame <= 1'b1;
             end else if (got_eof) begin
@@ -359,7 +375,7 @@ module simple_8b10b_packet_rx
                     frame_count <= frame_count + 1'b1;
                 end
                 in_frame <= 1'b0;
-            end else if (got_idle) begin
+            end else if (got_idle_only) begin
                 in_frame <= in_frame;
             end else if (code_error) begin
                 error_count <= error_count + 1'b1;
@@ -367,7 +383,7 @@ module simple_8b10b_packet_rx
             end else if (in_frame && (rxcharisk == 4'b0000)) begin
                 last_word  <= rxdata;
                 word_count <= word_count + 1'b1;
-            end else if ((rxcharisk != 4'b0000) && !got_known_control) begin
+            end else if ((rxcharisk != 4'b0000) && !known_control_word) begin
                 error_count <= error_count + 1'b1;
                 in_frame    <= 1'b0;
             end
