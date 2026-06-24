@@ -71,6 +71,8 @@ module gtwizard_0_TB;
     parameter   RX_REFCLK_PERIOD   =   6.4;
     parameter   SYSCLK_PERIOD      =   10.0;
     parameter   DCLK_PERIOD        =   10.0;
+    parameter   TRACK_DATA_TIMEOUT =   5000000; // 5 ms, in ns under `timescale 1ns/1ps
+    parameter   TRACK_DATA_HOLD    =   2000;    // 2 us stable-high check
   
 //************************Internal Register Declarations***********************
 
@@ -110,7 +112,14 @@ wire    [1:0]   txp_out_i;
     
     // ------------------------- GT Serial Connections ------------------------
     assign   rxn_in_i           =  txn_out_i;
-    assign   rxp_in_i           =  txp_out_i;  
+    assign   rxp_in_i           =  txp_out_i;
+
+    // Read the example design's internal track signal hierarchically instead of
+    // relying on a top-level TRACK_DATA_OUT port.  This keeps the testbench
+    // compatible with both the original GT Wizard example design and the local
+    // variant where TRACK_DATA_OUT may be commented out in gtwizard_0_exdes.v.
+    assign   track_data_i       =  gtwizard_0_exdes_i.track_data_out_i;
+
     //------------------------------ Global Signals ----------------------------
     
     //Simulate the global reset that occurs after configuration at the beginning
@@ -177,34 +186,46 @@ wire    [1:0]   txp_out_i;
     //----------------------------- Track Data ---------------------------------
  
     initial
-    begin
+    begin : track_data_check
         track_data_high_r = 1'b0;
-        #5000000;
-        if (track_data_i == 1) begin
-            track_data_high_r = 1'b1;
-        end
-        #2000;
-        if ((track_data_high_r == 1'b1) && (track_data_low_r == 1'b0))
-        begin
-            $display("------- TEST PASSED -------");
-            $display("------- Test Completed Successfully-------");
-        end
-        else
-        begin
-            $display("####### ERROR: TEST FAILED ! #######");
-        end
+        track_data_low_r  = 1'b0;
 
-        $stop;
+        fork
+            begin : wait_for_track_data
+                wait (track_data_i === 1'b1);
+                track_data_high_r = 1'b1;
+                $display("TRACK_DATA_OUT asserted at time %t", $time);
+
+                #TRACK_DATA_HOLD;
+                if (track_data_i === 1'b1)
+                begin
+                    $display("------- TEST PASSED -------");
+                    $display("------- Test Completed Successfully -------");
+                end
+                else
+                begin
+                    track_data_low_r = 1'b1;
+                    $display("####### ERROR: TRACK_DATA_OUT dropped after assertion #######");
+                end
+
+                $finish;
+            end
+
+            begin : timeout
+                #TRACK_DATA_TIMEOUT;
+                $display("####### ERROR: TEST TIMEOUT, TRACK_DATA_OUT never asserted #######");
+                $display("gt0_track_data_i = %b", gtwizard_0_exdes_i.gt0_track_data_i);
+                $display("gt1_track_data_i = %b", gtwizard_0_exdes_i.gt1_track_data_i);
+                $display("gt0_rxresetdone_i = %b", gtwizard_0_exdes_i.gt0_rxresetdone_i);
+                $display("gt1_rxresetdone_i = %b", gtwizard_0_exdes_i.gt1_rxresetdone_i);
+                $display("gt0_rxbyteisaligned_i = %b", gtwizard_0_exdes_i.gt0_rxbyteisaligned_i);
+                $display("gt1_rxbyteisaligned_i = %b", gtwizard_0_exdes_i.gt1_rxbyteisaligned_i);
+                $display("gt0_rxchanisaligned_i = %b", gtwizard_0_exdes_i.gt0_rxchanisaligned_i);
+                $display("gt1_rxchanisaligned_i = %b", gtwizard_0_exdes_i.gt1_rxchanisaligned_i);
+                $finish;
+            end
+        join_any
     end
-
-    initial
-    begin
-        track_data_low_r = 1'b0;
-        #647000;
-        @(negedge track_data_i) begin
-            track_data_low_r = 1'b1;
-        end
-    end    
  
  
 
@@ -217,7 +238,6 @@ wire    [1:0]   txp_out_i;
          .Q3_CLK0_GTREFCLK_PAD_P_IN           (tx_refclk_p_r),
         .DRP_CLK_IN_P                        (drp_clk_r),
         .DRP_CLK_IN_N                        (~ drp_clk_r),
-        .TRACK_DATA_OUT                      (track_data_i),
         .RXN_IN                              (rxn_in_i),
         .RXP_IN                              (rxp_in_i),
         .TXN_OUT                             (txn_out_i),
