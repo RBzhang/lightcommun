@@ -179,7 +179,7 @@ wire    [1:0]   txp_out_i;
     initial
     begin
         track_data_high_r = 1'b0;
-        #647000;
+        #5000000;
         if (track_data_i == 1) begin
             track_data_high_r = 1'b1;
         end
