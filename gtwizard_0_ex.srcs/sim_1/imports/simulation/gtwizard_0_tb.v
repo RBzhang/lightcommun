@@ -89,6 +89,7 @@ reg             gts_r;
 reg             reset_i;
 reg             track_data_high_r;
 reg             track_data_low_r;
+reg             track_data_seen_r;
 //********************************Wire Declarations**********************************
 
     //--------------------------------- Global Signals ------------------------------
@@ -186,45 +187,47 @@ wire    [1:0]   txp_out_i;
     //----------------------------- Track Data ---------------------------------
  
     initial
-    begin : track_data_check
+    begin
         track_data_high_r = 1'b0;
         track_data_low_r  = 1'b0;
+        track_data_seen_r = 1'b0;
 
-        fork
-            begin : wait_for_track_data
-                wait (track_data_i === 1'b1);
-                track_data_high_r = 1'b1;
-                $display("TRACK_DATA_OUT asserted at time %t", $time);
+        wait (track_data_i === 1'b1);
+        track_data_seen_r = 1'b1;
+        track_data_high_r = 1'b1;
+        $display("TRACK_DATA_OUT asserted at time %t", $time);
 
-                #TRACK_DATA_HOLD;
-                if (track_data_i === 1'b1)
-                begin
-                    $display("------- TEST PASSED -------");
-                    $display("------- Test Completed Successfully -------");
-                end
-                else
-                begin
-                    track_data_low_r = 1'b1;
-                    $display("####### ERROR: TRACK_DATA_OUT dropped after assertion #######");
-                end
+        #TRACK_DATA_HOLD;
+        if (track_data_i === 1'b1)
+        begin
+            $display("------- TEST PASSED -------");
+            $display("------- Test Completed Successfully -------");
+        end
+        else
+        begin
+            track_data_low_r = 1'b1;
+            $display("####### ERROR: TRACK_DATA_OUT dropped after assertion #######");
+        end
 
-                $finish;
-            end
+        $finish;
+    end
 
-            begin : timeout
-                #TRACK_DATA_TIMEOUT;
-                $display("####### ERROR: TEST TIMEOUT, TRACK_DATA_OUT never asserted #######");
-                $display("gt0_track_data_i = %b", gtwizard_0_exdes_i.gt0_track_data_i);
-                $display("gt1_track_data_i = %b", gtwizard_0_exdes_i.gt1_track_data_i);
-                $display("gt0_rxresetdone_i = %b", gtwizard_0_exdes_i.gt0_rxresetdone_i);
-                $display("gt1_rxresetdone_i = %b", gtwizard_0_exdes_i.gt1_rxresetdone_i);
-                $display("gt0_rxbyteisaligned_i = %b", gtwizard_0_exdes_i.gt0_rxbyteisaligned_i);
-                $display("gt1_rxbyteisaligned_i = %b", gtwizard_0_exdes_i.gt1_rxbyteisaligned_i);
-                $display("gt0_rxchanisaligned_i = %b", gtwizard_0_exdes_i.gt0_rxchanisaligned_i);
-                $display("gt1_rxchanisaligned_i = %b", gtwizard_0_exdes_i.gt1_rxchanisaligned_i);
-                $finish;
-            end
-        join_any
+    initial
+    begin
+        #TRACK_DATA_TIMEOUT;
+        if (track_data_seen_r != 1'b1)
+        begin
+            $display("####### ERROR: TEST TIMEOUT, TRACK_DATA_OUT never asserted #######");
+            $display("gt0_track_data_i = %b", gtwizard_0_exdes_i.gt0_track_data_i);
+            $display("gt1_track_data_i = %b", gtwizard_0_exdes_i.gt1_track_data_i);
+            $display("gt0_rxresetdone_i = %b", gtwizard_0_exdes_i.gt0_rxresetdone_i);
+            $display("gt1_rxresetdone_i = %b", gtwizard_0_exdes_i.gt1_rxresetdone_i);
+            $display("gt0_rxbyteisaligned_i = %b", gtwizard_0_exdes_i.gt0_rxbyteisaligned_i);
+            $display("gt1_rxbyteisaligned_i = %b", gtwizard_0_exdes_i.gt1_rxbyteisaligned_i);
+            $display("gt0_rxchanisaligned_i = %b", gtwizard_0_exdes_i.gt0_rxchanisaligned_i);
+            $display("gt1_rxchanisaligned_i = %b", gtwizard_0_exdes_i.gt1_rxchanisaligned_i);
+            $finish;
+        end
     end
  
  
