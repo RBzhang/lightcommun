@@ -26,20 +26,20 @@ module gtwizard_0_user_demo #
     input  wire [1:0]  RXP_IN,
     output wire [1:0]  TXN_OUT,
     output wire [1:0]  TXP_OUT,
-    output wire [1:0]  sfp_tx_disable,
+    output wire [1:0]  sfp_tx_disable
 
-    output wire        gt0_link_ready,
-    output wire        gt1_link_ready,
-    output wire [31:0] gt0_rx_last_word,
-    output wire [31:0] gt1_rx_last_word,
-    output wire [31:0] gt0_rx_word_count,
-    output wire [31:0] gt1_rx_word_count,
-    output wire [31:0] gt0_rx_frame_count,
-    output wire [31:0] gt1_rx_frame_count,
-    output wire [31:0] gt0_rx_error_count,
-    output wire [31:0] gt1_rx_error_count
+
 );
-
+    wire        gt0_link_ready;
+    wire        gt1_link_ready;
+    wire [31:0] gt0_rx_last_word;
+    wire [31:0] gt1_rx_last_word;
+    wire [31:0] gt0_rx_word_count;
+    wire [31:0] gt1_rx_word_count;
+    wire [31:0] gt0_rx_frame_count;
+    wire [31:0] gt1_rx_frame_count;
+    wire [31:0] gt0_rx_error_count;
+    wire [31:0] gt1_rx_error_count;
     localparam [7:0] K_SOF = 8'hfb; // K27.7
     localparam [7:0] K_EOF = 8'hfd; // K29.7
 
