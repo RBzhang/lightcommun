@@ -103,9 +103,24 @@ set_property LOC C8 [get_ports  Q3_CLK0_GTREFCLK_PAD_P_IN ]
 ################################# mgt wrapper constraints #####################
 
 ##---------- Set placement for gt0_gtx_wrapper_i/GTXE2_CHANNEL ------
-set_property LOC GTXE2_CHANNEL_X0Y12 [get_cells gtwizard_0_support_i/inst/gtwizard_0_init_i/gtwizard_0_i/gt0_gtwizard_0_i/gtxe2_i]
+#set_property LOC GTXE2_CHANNEL_X0Y12 [get_cells gtwizard_0_support_i/inst/gtwizard_0_init_i/gtwizard_0_i/gt0_gtwizard_0_i/gtxe2_i]
 ##---------- Set placement for gt1_gtx_wrapper_i/GTXE2_CHANNEL ------
-set_property LOC GTXE2_CHANNEL_X0Y13 [get_cells gtwizard_0_support_i/inst/gtwizard_0_init_i/gtwizard_0_i/gt1_gtwizard_0_i/gtxe2_i]
+#set_property LOC GTXE2_CHANNEL_X0Y13 [get_cells gtwizard_0_support_i/inst/gtwizard_0_init_i/gtwizard_0_i/gt1_gtwizard_0_i/gtxe2_i]
+
+set gt0_channel [get_cells -hierarchical -filter {NAME =~ *gt0_gtwizard_0_i/gtxe2_i}]
+set gt1_channel [get_cells -hierarchical -filter {NAME =~ *gt1_gtwizard_0_i/gtxe2_i}]
+
+if {[llength $gt0_channel] > 0} {
+    set_property LOC GTXE2_CHANNEL_X0Y12 $gt0_channel
+} else {
+    puts "ERROR: gt0 GTXE2_CHANNEL not found"
+}
+
+if {[llength $gt1_channel] > 0} {
+    set_property LOC GTXE2_CHANNEL_X0Y13 $gt1_channel
+} else {
+    puts "ERROR: gt1 GTXE2_CHANNEL not found"
+}
 
 ##---------- Set ASYNC_REG for flop which have async input ----------
 ##set_property ASYNC_REG TRUE [get_cells -hier -filter {name=~*gt0_frame_gen*system_reset_r_reg}]
