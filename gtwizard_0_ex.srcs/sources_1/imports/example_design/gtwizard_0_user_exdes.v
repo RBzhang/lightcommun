@@ -602,15 +602,15 @@ assign  q3_clk0_refclk_i                     =  1'b0;
     // While connecting the GT TX/RX Reset ports below, please add a delay of
     // minimum 500ns as mentioned in AR 43482.
 
-    ila_0 u_ila_0 (
-	.clk(gt0_rxusrclk2_i), // input wire clk
+//     ila_0 u_ila_0 (
+// 	.clk(gt0_rxusrclk2_i), // input wire clk
 
 
-	.probe0(error_detected_c0), // input wire [7:0]  probe0  
-	.probe1(error_detected_c1), // input wire [7:0]  probe1
-	.probe2(gt0_rxdata_i), // input wire [63:0]  probe2 
-	.probe3(gt1_rxdata_i) // input wire [63:0]  probe3
-);
+// 	.probe0(error_detected_c0), // input wire [7:0]  probe0  
+// 	.probe1(error_detected_c1), // input wire [7:0]  probe1
+// 	.probe2(gt0_rxdata_i), // input wire [63:0]  probe2 
+// 	.probe3(gt1_rxdata_i) // input wire [63:0]  probe3
+// );
 
     gtwizard_0 gtwizard_0_support_i 
     (
