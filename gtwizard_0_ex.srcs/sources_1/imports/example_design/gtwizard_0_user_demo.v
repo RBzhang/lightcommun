@@ -9,7 +9,9 @@
 //   EOF:     one low-byte K29.7, TXDATA=32'h000000fd, TXCHARISK=4'b0001
 //
 // RX logic discards idle/control characters, uses SOF/EOF to frame payload,
-// and exposes simple counters plus the last received payload word.
+// and exposes simple counters plus the last received payload word.  The RX
+// parser accepts SOF/EOF on any byte lane because GT word alignment can differ
+// between lanes after external loopback/cross-connect testing.
 
 module gtwizard_0_user_demo #
 (
@@ -27,21 +29,18 @@ module gtwizard_0_user_demo #
     output wire [1:0]  TXN_OUT,
     output wire [1:0]  TXP_OUT,
     output wire [1:0]  sfp_tx_disable
-
-
 );
-    wire        gt0_link_ready;
-    wire        gt1_link_ready;
-    wire [31:0] gt0_rx_last_word;
-    wire [31:0] gt1_rx_last_word;
-    wire [31:0] gt0_rx_word_count;
-    wire [31:0] gt1_rx_word_count;
-    wire [31:0] gt0_rx_frame_count;
-    wire [31:0] gt1_rx_frame_count;
-    wire [31:0] gt0_rx_error_count;
-    wire [31:0] gt1_rx_error_count;
-    localparam [7:0] K_SOF = 8'hfb; // K27.7
-    localparam [7:0] K_EOF = 8'hfd; // K29.7
+
+    (* keep = "true", mark_debug = "true" *) wire        gt0_link_ready;
+    (* keep = "true", mark_debug = "true" *) wire        gt1_link_ready;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt0_rx_last_word;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt1_rx_last_word;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt0_rx_word_count;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt1_rx_word_count;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt0_rx_frame_count;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt1_rx_frame_count;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt0_rx_error_count;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt1_rx_error_count;
 
     wire        gt0_tx_clk;
     wire        gt0_rx_clk;
@@ -56,16 +55,16 @@ module gtwizard_0_user_demo #
     wire        gt1_tx_ready;
     wire        gt1_rx_ready;
 
-    wire [31:0] gt0_rxdata;
-    wire [3:0]  gt0_rxcharisk;
-    wire [3:0]  gt0_rxdisperr;
-    wire [3:0]  gt0_rxnotintable;
-    wire        gt0_rx_valid;
-    wire [31:0] gt1_rxdata;
-    wire [3:0]  gt1_rxcharisk;
-    wire [3:0]  gt1_rxdisperr;
-    wire [3:0]  gt1_rxnotintable;
-    wire        gt1_rx_valid;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt0_rxdata;
+    (* keep = "true", mark_debug = "true" *) wire [3:0]  gt0_rxcharisk;
+    (* keep = "true", mark_debug = "true" *) wire [3:0]  gt0_rxdisperr;
+    (* keep = "true", mark_debug = "true" *) wire [3:0]  gt0_rxnotintable;
+    (* keep = "true", mark_debug = "true" *) wire        gt0_rx_valid;
+    (* keep = "true", mark_debug = "true" *) wire [31:0] gt1_rxdata;
+    (* keep = "true", mark_debug = "true" *) wire [3:0]  gt1_rxcharisk;
+    (* keep = "true", mark_debug = "true" *) wire [3:0]  gt1_rxdisperr;
+    (* keep = "true", mark_debug = "true" *) wire [3:0]  gt1_rxnotintable;
+    (* keep = "true", mark_debug = "true" *) wire        gt1_rx_valid;
 
     wire [31:0] gt0_txdata;
     wire [3:0]  gt0_txcharisk;
@@ -77,6 +76,7 @@ module gtwizard_0_user_demo #
     assign gt0_link_ready = gt0_tx_ready & gt0_rx_ready;
     assign gt1_link_ready = gt1_tx_ready & gt1_rx_ready;
 
+    (* DONT_TOUCH = "true" *)
     ila_rx0 u_ila_rx0 (
         .clk(gt0_rx_clk),
         .probe0(gt0_link_ready),
@@ -92,6 +92,7 @@ module gtwizard_0_user_demo #
         .probe10(gt0_rx_error_count)
     );
 
+    (* DONT_TOUCH = "true" *)
     ila_rx1 u_ila_rx1 (
         .clk(gt1_rx_clk),
         .probe0(gt1_link_ready),
@@ -323,10 +324,23 @@ module simple_8b10b_packet_rx
     reg in_frame = 1'b0;
 
     wire code_error = |rxdisperr | |rxnotintable;
-    wire low_byte_k = rxcharisk[0];
-    wire got_idle   = (rxcharisk == 4'b1111) && (rxdata == {K_IDLE, K_IDLE, K_IDLE, K_IDLE});
-    wire got_sof    = low_byte_k && (rxdata[7:0] == K_SOF);
-    wire got_eof    = low_byte_k && (rxdata[7:0] == K_EOF);
+
+    wire byte0_sof = rxcharisk[0] && (rxdata[7:0]   == K_SOF);
+    wire byte1_sof = rxcharisk[1] && (rxdata[15:8]  == K_SOF);
+    wire byte2_sof = rxcharisk[2] && (rxdata[23:16] == K_SOF);
+    wire byte3_sof = rxcharisk[3] && (rxdata[31:24] == K_SOF);
+    wire got_sof   = byte0_sof | byte1_sof | byte2_sof | byte3_sof;
+
+    wire byte0_eof = rxcharisk[0] && (rxdata[7:0]   == K_EOF);
+    wire byte1_eof = rxcharisk[1] && (rxdata[15:8]  == K_EOF);
+    wire byte2_eof = rxcharisk[2] && (rxdata[23:16] == K_EOF);
+    wire byte3_eof = rxcharisk[3] && (rxdata[31:24] == K_EOF);
+    wire got_eof   = byte0_eof | byte1_eof | byte2_eof | byte3_eof;
+
+    wire got_idle = (rxcharisk == 4'b1111) &&
+                    (rxdata == {K_IDLE, K_IDLE, K_IDLE, K_IDLE});
+
+    wire got_known_control = got_idle | got_sof | got_eof;
 
     always @(posedge clk) begin
         if (rst || !ready) begin
@@ -336,10 +350,9 @@ module simple_8b10b_packet_rx
             frame_count <= 32'd0;
             error_count <= 32'd0;
         end else if (rx_valid) begin
-            if (code_error) begin
-                error_count <= error_count + 1'b1;
-                in_frame    <= 1'b0;
-            end else if (got_sof) begin
+            // SOF/EOF are recognized on any byte lane.  This avoids false errors
+            // when GTX word alignment places the control character at byte1/2/3.
+            if (got_sof) begin
                 in_frame <= 1'b1;
             end else if (got_eof) begin
                 if (in_frame) begin
@@ -348,10 +361,13 @@ module simple_8b10b_packet_rx
                 in_frame <= 1'b0;
             end else if (got_idle) begin
                 in_frame <= in_frame;
+            end else if (code_error) begin
+                error_count <= error_count + 1'b1;
+                in_frame    <= 1'b0;
             end else if (in_frame && (rxcharisk == 4'b0000)) begin
                 last_word  <= rxdata;
                 word_count <= word_count + 1'b1;
-            end else if (rxcharisk != 4'b0000) begin
+            end else if ((rxcharisk != 4'b0000) && !got_known_control) begin
                 error_count <= error_count + 1'b1;
                 in_frame    <= 1'b0;
             end
