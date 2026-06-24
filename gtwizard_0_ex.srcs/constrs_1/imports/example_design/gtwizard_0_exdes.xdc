@@ -32,7 +32,7 @@
 ## WITH ALL FAULTS, AND XILINX HEREBY DISCLAIMS ALL WARRANTIES
 ## AND CONDITIONS, EXPRESS, IMPLIED, OR STATUTORY, INCLUDING
 ## BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY, NON-
-## INFRINGEMENT, OR FITNESS FOR ANY PARTICULAR PURPOSE; and
+## INFRINGEMENT, OR FITNESS FOR A PARTICULAR PURPOSE; and
 ## (2) Xilinx shall not be liable (whether in contract or tort,
 ## including negligence, or under any other theory of
 ## liability) for any loss or damage of any kind or nature
@@ -65,62 +65,41 @@
 
 ################################## Clock Constraints ##########################
 
-
 ####################### GT reference clock constraints #########################
- 
-
-    create_clock -period 6.4 [get_ports Q3_CLK0_GTREFCLK_PAD_P_IN]
-
-
-
-
+create_clock -period 6.4 [get_ports Q3_CLK0_GTREFCLK_PAD_P_IN]
 
 create_clock -name drpclk_in_i -period 10.0 [get_ports DRP_CLK_IN_P]
 
-
-
 # User Clock Constraints
+set_false_path -quiet -to [get_pins -quiet -filter {REF_PIN_NAME=~*CLR} -of_objects [get_cells -quiet -hierarchical -filter {NAME =~ *_txfsmresetdone_r*}]]
+set_false_path -quiet -to [get_pins -quiet -filter {REF_PIN_NAME=~*D} -of_objects [get_cells -quiet -hierarchical -filter {NAME =~ *_txfsmresetdone_r*}]]
 
+# reset_on_error_in_r exists only in the original frame-check example design.
+# It is absent when the top is gtwizard_0_user_demo, so keep this constraint quiet.
+set_false_path -quiet -to [get_pins -quiet -filter {REF_PIN_NAME=~*D} -of_objects [get_cells -quiet -hierarchical -filter {NAME =~ *reset_on_error_in_r*}]]
 
-
-set_false_path -to [get_pins -filter {REF_PIN_NAME=~*CLR} -of_objects [get_cells -hierarchical -filter {NAME =~ *_txfsmresetdone_r*}]]
-set_false_path -to [get_pins -filter {REF_PIN_NAME=~*D} -of_objects [get_cells -hierarchical -filter {NAME =~ *_txfsmresetdone_r*}]]
-set_false_path -to [get_pins -filter {REF_PIN_NAME=~*D} -of_objects [get_cells -hierarchical -filter {NAME =~ *reset_on_error_in_r*}]]
 ################################# RefClk Location constraints #####################
-
-set_property LOC C7 [get_ports  Q3_CLK0_GTREFCLK_PAD_N_IN ] 
-set_property LOC C8 [get_ports  Q3_CLK0_GTREFCLK_PAD_P_IN ]
+set_property LOC C7 [get_ports Q3_CLK0_GTREFCLK_PAD_N_IN]
+set_property LOC C8 [get_ports Q3_CLK0_GTREFCLK_PAD_P_IN]
 
 ## LOC constrain for DRP_CLK_P/N 
- 
 ## KC724 board constrain
-# set_property LOC C25 [get_ports  DRP_CLK_IN_P]
-# set_property LOC B25 [get_ports  DRP_CLK_IN_N]
+# set_property LOC C25 [get_ports DRP_CLK_IN_P]
+# set_property LOC B25 [get_ports DRP_CLK_IN_N]
 ## KC705 board constrain
-##set_property LOC AD12 [get_ports  DRP_CLK_IN_P]
-##set_property LOC AD11 [get_ports  DRP_CLK_IN_N]
- 
+##set_property LOC AD12 [get_ports DRP_CLK_IN_P]
+##set_property LOC AD11 [get_ports DRP_CLK_IN_N]
+
 ################################# mgt wrapper constraints #####################
+## The original generated XDC used a non-hierarchical GT cell path.  The user
+## demo top adds the u_gt instance level, so use hierarchical matching instead.
+## XDC files do not support Tcl control-flow commands such as if/else; keep this
+## as direct constraint commands.
 
 ##---------- Set placement for gt0_gtx_wrapper_i/GTXE2_CHANNEL ------
-#set_property LOC GTXE2_CHANNEL_X0Y12 [get_cells gtwizard_0_support_i/inst/gtwizard_0_init_i/gtwizard_0_i/gt0_gtwizard_0_i/gtxe2_i]
+set_property LOC GTXE2_CHANNEL_X0Y12 [get_cells -hierarchical -filter {NAME =~ *gt0_gtwizard_0_i/gtxe2_i}]
 ##---------- Set placement for gt1_gtx_wrapper_i/GTXE2_CHANNEL ------
-#set_property LOC GTXE2_CHANNEL_X0Y13 [get_cells gtwizard_0_support_i/inst/gtwizard_0_init_i/gtwizard_0_i/gt1_gtwizard_0_i/gtxe2_i]
-
-set gt0_channel [get_cells -hierarchical -filter {NAME =~ *gt0_gtwizard_0_i/gtxe2_i}]
-set gt1_channel [get_cells -hierarchical -filter {NAME =~ *gt1_gtwizard_0_i/gtxe2_i}]
-
-if {[llength $gt0_channel] > 0} {
-    set_property LOC GTXE2_CHANNEL_X0Y12 $gt0_channel
-} else {
-    puts "ERROR: gt0 GTXE2_CHANNEL not found"
-}
-
-if {[llength $gt1_channel] > 0} {
-    set_property LOC GTXE2_CHANNEL_X0Y13 $gt1_channel
-} else {
-    puts "ERROR: gt1 GTXE2_CHANNEL not found"
-}
+set_property LOC GTXE2_CHANNEL_X0Y13 [get_cells -hierarchical -filter {NAME =~ *gt1_gtwizard_0_i/gtxe2_i}]
 
 ##---------- Set ASYNC_REG for flop which have async input ----------
 ##set_property ASYNC_REG TRUE [get_cells -hier -filter {name=~*gt0_frame_gen*system_reset_r_reg}]
@@ -128,7 +107,7 @@ if {[llength $gt1_channel] > 0} {
 ##set_property ASYNC_REG TRUE [get_cells -hier -filter {name=~*gt1_frame_gen*system_reset_r_reg}]
 ##set_property ASYNC_REG TRUE [get_cells -hier -filter {name=~*gt1_frame_check*system_reset_r_reg}]
 
-##---------- Set False Path from one clock to other ----------
+##---------- SFP TX disable and DRP clock constraints ----------
 set_property IOSTANDARD LVCMOS33 [get_ports {sfp_tx_disable[*]}]
 set_property PACKAGE_PIN AA28 [get_ports {sfp_tx_disable[0]}]
 set_property PACKAGE_PIN AF28 [get_ports {sfp_tx_disable[1]}]
