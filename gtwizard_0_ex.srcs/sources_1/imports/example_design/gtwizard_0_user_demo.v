@@ -12,10 +12,13 @@
 // and exposes simple counters plus the last received payload word.  The RX
 // parser accepts SOF/EOF on any byte lane because GT word alignment can differ
 // between lanes after external loopback/cross-connect testing.
+//
+// Default FRAME_WORDS is 1024 to run a longer payload stress test and reduce
+// the SOF/EOF ratio compared with the original 16-word smoke test.
 
 module gtwizard_0_user_demo #
 (
-    parameter integer FRAME_WORDS = 16,
+    parameter integer FRAME_WORDS = 1024,
     parameter integer IDLE_WORDS  = 16
 )
 (
@@ -214,7 +217,7 @@ endmodule
 module simple_8b10b_packet_tx #
 (
     parameter [7:0]   LANE_ID     = 8'h00,
-    parameter integer FRAME_WORDS = 16,
+    parameter integer FRAME_WORDS = 1024,
     parameter integer IDLE_WORDS  = 16
 )
 (
